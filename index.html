@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marketing Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0d0d14; --surface: #16161f; --surface2: #1e1e2a;
+    --border: #2a2a3a; --accent: #c8f04e; --accent2: #7c6af5;
+    --accent3: #f05e8c; --text: #f0f0f8; --muted: #6b6b88;
+    --google: #4285f4; --meta: #0866ff;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; min-height:100vh; padding:24px; font-size:14px; }
+
+  .header { display:flex; align-items:center; justify-content:space-between; margin-bottom:28px; flex-wrap:wrap; gap:16px; }
+  .title-block h1 { font-family:'Syne',sans-serif; font-size:22px; font-weight:800; letter-spacing:-.02em; }
+  .title-block span { color:var(--accent); }
+  .brand-selector { display:flex; align-items:center; gap:10px; }
+  .brand-selector label { color:var(--muted); font-size:11px; letter-spacing:.08em; text-transform:uppercase; }
+  .brand-selector select { background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:8px 14px; border-radius:8px; font-family:inherit; font-size:14px; cursor:pointer; outline:none; }
+  .platform-toggle { display:flex; background:var(--surface2); border-radius:10px; border:1px solid var(--border); overflow:hidden; }
+  .platform-btn { padding:9px 18px; cursor:pointer; border:none; background:transparent; color:var(--muted); font-family:inherit; font-size:13px; font-weight:500; transition:all .2s; display:flex; align-items:center; gap:7px; }
+  .platform-btn.active { background:var(--surface); color:var(--text); }
+  .platform-btn .dot { width:8px; height:8px; border-radius:50%; }
+  .platform-btn[data-p="google"] .dot { background:var(--google); }
+  .platform-btn[data-p="meta"] .dot { background:var(--meta); }
+  .platform-btn[data-p="all"] .dot { background:var(--accent); }
+
+  .section-label { font-size:10px; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); margin-bottom:12px; margin-top:4px; }
+
+  .kpi-grid, .kpi-grid-2 { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+  .kpi-grid-2 { margin-bottom:24px; }
+  .kpi-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; position:relative; overflow:hidden; transition:border-color .2s,transform .2s; }
+  .kpi-card:hover { border-color:var(--accent2); transform:translateY(-2px); }
+  .kpi-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--accent2),transparent); opacity:0; transition:opacity .2s; }
+  .kpi-card:hover::before { opacity:1; }
+  .kpi-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px; }
+  .kpi-value { font-family:'Syne',sans-serif; font-size:24px; font-weight:700; line-height:1; }
+  .kpi-value.accent { color:var(--accent); } .kpi-value.accent2 { color:var(--accent2); } .kpi-value.accent3 { color:var(--accent3); }
+  .kpi-sub { font-size:11px; color:var(--muted); margin-top:5px; }
+  .kpi-badge { display:inline-flex; align-items:center; gap:3px; font-size:11px; padding:2px 7px; border-radius:20px; margin-top:5px; font-weight:500; }
+  .badge-up { background:rgba(200,240,78,.15); color:var(--accent); }
+  .badge-dn { background:rgba(240,94,140,.15); color:var(--accent3); }
+
+  .charts-row { display:grid; grid-template-columns:360px 1fr; gap:16px; margin-bottom:24px; }
+  .chart-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; }
+  .chart-title { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:16px; font-weight:600; }
+
+  .funnel-wrap svg { width:100%; display:block; }
+  .funnel-stats { display:flex; gap:16px; flex-wrap:wrap; margin-top:14px; }
+  .funnel-stat { font-size:11px; color:var(--muted); }
+  .funnel-stat strong { color:var(--text); }
+
+  .tables-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+  .table-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; overflow:hidden; }
+  table { width:100%; border-collapse:collapse; }
+  thead th { text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); padding:0 8px 12px; border-bottom:1px solid var(--border); font-weight:600; }
+  thead th:first-child { padding-left:0; }
+  tbody tr { border-bottom:1px solid rgba(255,255,255,.04); transition:background .15s; }
+  tbody tr:hover { background:rgba(255,255,255,.03); }
+  tbody tr:last-child { border-bottom:none; }
+  tbody td { padding:11px 8px; font-size:13px; }
+  tbody td:first-child { padding-left:0; color:var(--muted); }
+  .num { font-variant-numeric:tabular-nums; }
+  .pill { display:inline-block; background:rgba(124,106,245,.18); color:var(--accent2); border-radius:4px; padding:2px 6px; font-size:11px; font-weight:600; }
+
+  .keywords-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; margin-bottom:24px; }
+
+  .kpi-card,.chart-card,.table-card,.keywords-card { animation:fadeUp .4s ease both; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+  @media(max-width:900px) {
+    .kpi-grid,.kpi-grid-2 { grid-template-columns:repeat(2,1fr); }
+    .charts-row,.tables-row { grid-template-columns:1fr; }
+  }
+  @media(max-width:520px) {
+    .kpi-grid,.kpi-grid-2 { grid-template-columns:1fr 1fr; }
+    body { padding:14px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="title-block"><h1>Marketing <span>Dashboard</span></h1></div>
+  <div class="brand-selector">
+    <label>Marca</label>
+    <select id="brandSelect">
+      <option>Marca A</option><option>Marca B</option><option>Marca C</option>
+    </select>
+  </div>
+  <div class="platform-toggle">
+    <button class="platform-btn active" data-p="all"><span class="dot"></span> Todos</button>
+    <button class="platform-btn" data-p="google"><span class="dot"></span> Google Ads</button>
+    <button class="platform-btn" data-p="meta"><span class="dot"></span> Meta Ads</button>
+  </div>
+</div>
+
+<div class="section-label">Inversión y Retorno</div>
+<div class="kpi-grid">
+  <div class="kpi-card"><div class="kpi-label">Gasto Publicitario</div><div class="kpi-value" id="kpi-gasto"></div><div class="kpi-sub">USD este mes</div><span class="kpi-badge" id="kpi-gasto-b"></span></div>
+  <div class="kpi-card"><div class="kpi-label">ROI</div><div class="kpi-value accent" id="kpi-roi"></div><div class="kpi-sub">Retorno sobre inversión</div><span class="kpi-badge" id="kpi-roi-b"></span></div>
+  <div class="kpi-card"><div class="kpi-label">CAC</div><div class="kpi-value accent2" id="kpi-cac"></div><div class="kpi-sub">Costo adquisición cliente</div><span class="kpi-badge" id="kpi-cac-b"></span></div>
+  <div class="kpi-card"><div class="kpi-label">Leads Totales</div><div class="kpi-value" id="kpi-leads"></div><div class="kpi-sub">Este mes</div><span class="kpi-badge" id="kpi-leads-b"></span></div>
+</div>
+
+<div class="section-label">Conversión y Calidad</div>
+<div class="kpi-grid-2">
+  <div class="kpi-card"><div class="kpi-label">Conversion Rate</div><div class="kpi-value accent" id="kpi-cr"></div><div class="kpi-sub">Leads / Clicks</div><span class="kpi-badge" id="kpi-cr-b"></span></div>
+  <div class="kpi-card"><div class="kpi-label">CPL</div><div class="kpi-value accent3" id="kpi-cpl"></div><div class="kpi-sub">Costo por Lead</div><span class="kpi-badge" id="kpi-cpl-b"></span></div>
+  <div class="kpi-card"><div class="kpi-label">SQL</div><div class="kpi-value accent2" id="kpi-sql"></div><div class="kpi-sub">Sales Qualified Leads</div><span class="kpi-badge" id="kpi-sql-b"></span></div>
+  <div class="kpi-card"><div class="kpi-label">CSQL</div><div class="kpi-value" id="kpi-csql"></div><div class="kpi-sub">Costo por SQL</div><span class="kpi-badge" id="kpi-csql-b"></span></div>
+</div>
+
+<div class="charts-row">
+  <div class="chart-card">
+    <div class="chart-title">Embudo de Conversión</div>
+    <div class="funnel-wrap" id="funnelWrap"></div>
+    <div class="funnel-stats" id="funnelStats"></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Leads × Día</div>
+    <canvas id="leadsChart" height="160"></canvas>
+  </div>
+</div>
+
+<div class="tables-row">
+  <div class="table-card">
+    <div class="chart-title">Resultados × Campaña</div>
+    <table><thead><tr><th>Campaña</th><th>Leads</th><th>CPL</th><th>Inversión</th></tr></thead><tbody id="campTable"></tbody></table>
+  </div>
+  <div class="table-card">
+    <div class="chart-title">Resultados × País</div>
+    <table><thead><tr><th>País</th><th>Leads</th><th>CPL</th><th>Inversión</th><th>SQL</th></tr></thead><tbody id="paisTable"></tbody></table>
+  </div>
+</div>
+
+<div class="keywords-card">
+  <div class="chart-title">Top Keywords</div>
+  <table><thead><tr><th>Keyword</th><th>Clicks</th><th>CTR</th><th>CPC</th><th>Leads</th><th>CPL</th></tr></thead><tbody id="kwTable"></tbody></table>
+</div>
+
+<script>
+const MOCK = {
+  all: {
+    kpis: {
+      gasto: { val:'$4,820', badge:'▲ 12%', up:true },
+      roi:   { val:'3.4×',  badge:'▲ 0.3×', up:true },
+      cac:   { val:'$38',   badge:'▼ $4', up:false },
+      leads: { val:'1,247', badge:'▲ 8%', up:true },
+      cr:    { val:'6.3%',  badge:'▲ 0.4%', up:true },
+      cpl:   { val:'$3.87', badge:'▼ mejor', up:true },
+      sql:   { val:'342',   badge:'▲ 15%', up:true },
+      csql:  { val:'$14.10',badge:'▲ $1.2', up:false },
+    },
+    funnel: [
+      { label:'Impresiones', val:98400, color:'#7c6af5' },
+      { label:'Clicks',      val:19730, color:'#a68af7' },
+      { label:'Leads',       val:1247,  color:'#c8f04e' },
+      { label:'SQL',         val:342,   color:'#f05e8c' },
+    ],
+    leadsData: [24,18,32,28,45,38,52,41,36,48,55,43,39,61,58,47,44,53,66,72,59,68,74,63,70,78,65,80,73,77],
+    campaigns: [
+      { name:'Search',          leads:714, cpl:'$3.20', inv:'$2,285' },
+      { name:'Performance Max', leads:533, cpl:'$4.75', inv:'$2,532' },
+    ],
+    paises: [
+      { flag:'🇲🇽', name:'MX',       leads:498, cpl:'$3.10', inv:'$1,544', sql:142 },
+      { flag:'🇨🇴', name:'Colombia', leads:389, cpl:'$3.90', inv:'$1,517', sql:108 },
+      { flag:'🇩🇴', name:'RD',       leads:213, cpl:'$4.50', inv:'$959',   sql:54  },
+      { flag:'🇭🇳', name:'Honduras', leads:147, cpl:'$5.44', inv:'$800',   sql:38  },
+    ],
+    keywords: [
+      { kw:'seguro de vida online',  clicks:'2,840', ctr:'8.2%', cpc:'$0.82', leads:195, cpl:'$2.10', tone:'good' },
+      { kw:'cotizar seguro médico',  clicks:'1,990', ctr:'7.4%', cpc:'$1.10', leads:131, cpl:'$2.89', tone:'good' },
+      { kw:'seguro de auto precio',  clicks:'1,720', ctr:'6.1%', cpc:'$1.25', leads:98,  cpl:'$4.38', tone:'mid'  },
+      { kw:'seguros empresariales',  clicks:'1,310', ctr:'9.8%', cpc:'$1.60', leads:114, cpl:'$3.20', tone:'mid'  },
+      { kw:'mejor seguro de salud',  clicks:'980',   ctr:'5.3%', cpc:'$0.95', leads:67,  cpl:'$6.10', tone:'bad'  },
+    ],
+  },
+
+  google: {
+    kpis: {
+      gasto: { val:'$2,817', badge:'▲ 9%', up:true },
+      roi:   { val:'3.8×',  badge:'▲ 0.5×', up:true },
+      cac:   { val:'$33',   badge:'▼ $6', up:false },
+      leads: { val:'714',   badge:'▲ 11%', up:true },
+      cr:    { val:'7.1%',  badge:'▲ 0.6%', up:true },
+      cpl:   { val:'$3.20', badge:'▼ mejor', up:true },
+      sql:   { val:'198',   badge:'▲ 18%', up:true },
+      csql:  { val:'$12.40',badge:'▼ $2.1', up:true },
+    },
+    funnel: [
+      { label:'Impresiones', val:54200, color:'#4285f4' },
+      { label:'Clicks',      val:10840, color:'#6fa8f5' },
+      { label:'Leads',       val:714,   color:'#c8f04e' },
+      { label:'SQL',         val:198,   color:'#f05e8c' },
+    ],
+    leadsData: [14,10,18,16,24,22,30,25,20,28,32,26,22,35,34,28,26,31,38,42,34,40,44,37,42,46,38,48,43,46],
+    campaigns: [
+      { name:'Search',          leads:420, cpl:'$2.90', inv:'$1,218' },
+      { name:'Performance Max', leads:294, cpl:'$4.20', inv:'$1,235' },
+    ],
+    paises: [
+      { flag:'🇲🇽', name:'MX',       leads:280, cpl:'$2.80', inv:'$784',  sql:82 },
+      { flag:'🇨🇴', name:'Colombia', leads:218, cpl:'$3.40', inv:'$741',  sql:64 },
+      { flag:'🇩🇴', name:'RD',       leads:120, cpl:'$4.00', inv:'$480',  sql:32 },
+      { flag:'🇭🇳', name:'Honduras', leads:96,  cpl:'$4.90', inv:'$470',  sql:20 },
+    ],
+    keywords: [
+      { kw:'seguro de vida online',  clicks:'1,620', ctr:'9.1%', cpc:'$0.75', leads:128, cpl:'$1.95', tone:'good' },
+      { kw:'cotizar seguro médico',  clicks:'1,140', ctr:'8.2%', cpc:'$1.00', leads:89,  cpl:'$2.56', tone:'good' },
+      { kw:'seguro de auto precio',  clicks:'980',   ctr:'6.8%', cpc:'$1.15', leads:60,  cpl:'$3.90', tone:'mid'  },
+      { kw:'seguros empresariales',  clicks:'760',   ctr:'10.4%',cpc:'$1.50', leads:76,  cpl:'$2.98', tone:'mid'  },
+      { kw:'mejor seguro de salud',  clicks:'540',   ctr:'5.9%', cpc:'$0.88', leads:44,  cpl:'$5.50', tone:'bad'  },
+    ],
+  },
+
+  meta: {
+    kpis: {
+      gasto: { val:'$2,003', badge:'▲ 16%', up:true },
+      roi:   { val:'2.9×',  badge:'▲ 0.1×', up:true },
+      cac:   { val:'$45',   badge:'▲ $2', up:false },
+      leads: { val:'533',   badge:'▲ 4%', up:true },
+      cr:    { val:'5.2%',  badge:'▼ 0.3%', up:false },
+      cpl:   { val:'$4.75', badge:'▲ peor', up:false },
+      sql:   { val:'144',   badge:'▲ 11%', up:true },
+      csql:  { val:'$16.80',badge:'▲ $3.4', up:false },
+    },
+    funnel: [
+      { label:'Impresiones', val:44200, color:'#0866ff' },
+      { label:'Clicks',      val:8890,  color:'#4d94ff' },
+      { label:'Leads',       val:533,   color:'#c8f04e' },
+      { label:'SQL',         val:144,   color:'#f05e8c' },
+    ],
+    leadsData: [10,8,14,12,21,16,22,16,16,20,23,17,17,26,24,19,18,22,28,30,25,28,30,26,28,32,27,32,30,31],
+    campaigns: [
+      { name:'Lead Gen',         leads:310, cpl:'$4.20', inv:'$1,302' },
+      { name:'Conversiones Web', leads:223, cpl:'$5.50', inv:'$1,227' },
+    ],
+    paises: [
+      { flag:'🇲🇽', name:'MX',       leads:218, cpl:'$3.60', inv:'$785',  sql:60 },
+      { flag:'🇨🇴', name:'Colombia', leads:171, cpl:'$4.60', inv:'$787',  sql:44 },
+      { flag:'🇩🇴', name:'RD',       leads:93,  cpl:'$5.20', inv:'$484',  sql:22 },
+      { flag:'🇭🇳', name:'Honduras', leads:51,  cpl:'$6.40', inv:'$326',  sql:18 },
+    ],
+    keywords: [
+      { kw:'seguro vida familia',   clicks:'1,220', ctr:'7.1%', cpc:'$0.92', leads:67, cpl:'$2.48', tone:'good' },
+      { kw:'seguro médico precio',  clicks:'850',   ctr:'6.3%', cpc:'$1.20', leads:42, cpl:'$3.41', tone:'mid'  },
+      { kw:'seguro auto barato',    clicks:'740',   ctr:'5.4%', cpc:'$1.35', leads:38, cpl:'$4.80', tone:'mid'  },
+      { kw:'seguro empresas pymes', clicks:'550',   ctr:'9.2%', cpc:'$1.70', leads:38, cpl:'$3.50', tone:'mid'  },
+      { kw:'mejor seguro salud mx', clicks:'440',   ctr:'4.8%', cpc:'$1.05', leads:23, cpl:'$6.70', tone:'bad'  },
+    ],
+  },
+};
+
+let currentPlatform = 'all';
+let leadsChart = null;
+
+function fmt(n) { return Number(n).toLocaleString('es-MX'); }
+
+function renderKPIs(d) {
+  [['gasto','kpi-gasto','kpi-gasto-b'],['roi','kpi-roi','kpi-roi-b'],['cac','kpi-cac','kpi-cac-b'],
+   ['leads','kpi-leads','kpi-leads-b'],['cr','kpi-cr','kpi-cr-b'],['cpl','kpi-cpl','kpi-cpl-b'],
+   ['sql','kpi-sql','kpi-sql-b'],['csql','kpi-csql','kpi-csql-b']
+  ].forEach(([id, valEl, badgeEl]) => {
+    document.getElementById(valEl).textContent = d.kpis[id].val;
+    const b = document.getElementById(badgeEl);
+    b.textContent = d.kpis[id].badge;
+    b.className = 'kpi-badge ' + (d.kpis[id].up ? 'badge-up' : 'badge-dn');
+  });
+}
+
+function renderFunnel(steps) {
+  const W = 300, rowH = 54, gap = 8;
+  const totalH = steps.length * (rowH + gap) - gap;
+  const maxVal = steps[0].val;
+  const minW = 80, maxW = W;
+
+  let rows = '';
+  steps.forEach((s, i) => {
+    const barW = minW + (s.val / maxVal) * (maxW - minW);
+    const x = (W - barW) / 2;
+    const y = i * (rowH + gap);
+    const textCol = s.color === '#c8f04e' ? '#0d0d14' : '#ffffff';
+    rows += `
+      <rect x="${x.toFixed(1)}" y="${y}" width="${barW.toFixed(1)}" height="${rowH}" rx="8" fill="${s.color}" opacity="0.9"/>
+      <text x="${(W/2).toFixed(1)}" y="${(y + rowH/2 - 8).toFixed(1)}" text-anchor="middle"
+        fill="${textCol}" font-family="DM Sans,sans-serif" font-size="11" opacity="0.85">${s.label}</text>
+      <text x="${(W/2).toFixed(1)}" y="${(y + rowH/2 + 12).toFixed(1)}" text-anchor="middle"
+        fill="${textCol}" font-family="Syne,sans-serif" font-size="16" font-weight="700">${fmt(s.val)}</text>`;
+  });
+
+  document.getElementById('funnelWrap').innerHTML =
+    `<svg viewBox="0 0 ${W} ${totalH}" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">${rows}</svg>`;
+
+  const ctr  = ((steps[1].val / steps[0].val) * 100).toFixed(1);
+  const lr   = ((steps[2].val / steps[1].val) * 100).toFixed(1);
+  const sqlr = ((steps[3].val / steps[2].val) * 100).toFixed(1);
+  document.getElementById('funnelStats').innerHTML = `
+    <div class="funnel-stat">CTR <strong>${ctr}%</strong></div>
+    <div class="funnel-stat">Lead Rate <strong style="color:var(--accent)">${lr}%</strong></div>
+    <div class="funnel-stat">SQL Rate <strong style="color:var(--accent2)">${sqlr}%</strong></div>`;
+}
+
+function renderLeadsChart(data) {
+  const labels = Array.from({length:30},(_,i)=>`${i+1}`);
+  const colors = { all:'#c8f04e', google:'#4285f4', meta:'#0866ff' };
+  const bgs    = { all:'rgba(200,240,78,0.07)', google:'rgba(66,133,244,0.09)', meta:'rgba(8,102,255,0.09)' };
+  const color  = colors[currentPlatform];
+  const bg     = bgs[currentPlatform];
+
+  if (leadsChart) {
+    leadsChart.data.datasets[0].data = data;
+    leadsChart.data.datasets[0].borderColor = color;
+    leadsChart.data.datasets[0].backgroundColor = bg;
+    leadsChart.update('active');
+    return;
+  }
+  const ctx = document.getElementById('leadsChart').getContext('2d');
+  leadsChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets: [{ data, borderColor:color, backgroundColor:bg, borderWidth:2, pointRadius:0, pointHoverRadius:4, tension:0.4, fill:true }] },
+    options: {
+      responsive:true,
+      plugins: { legend:{display:false}, tooltip:{ backgroundColor:'#1e1e2a', borderColor:'#2a2a3a', borderWidth:1, titleColor:'#6b6b88', bodyColor:'#f0f0f8',
+        callbacks:{ title:i=>`Día ${i[0].label}`, label:i=>`${i.raw} leads` } } },
+      scales: {
+        x:{ grid:{color:'rgba(255,255,255,.04)'}, ticks:{color:'#6b6b88',font:{size:10},maxTicksLimit:6} },
+        y:{ grid:{color:'rgba(255,255,255,.04)'}, ticks:{color:'#6b6b88',font:{size:10}} }
+      }
+    }
+  });
+}
+
+function renderCampaigns(rows) {
+  document.getElementById('campTable').innerHTML = rows.map(r =>
+    `<tr><td>${r.name}</td><td class="num">${fmt(r.leads)}</td><td class="num">${r.cpl}</td><td class="num">${r.inv}</td></tr>`
+  ).join('');
+}
+
+function renderPaises(rows) {
+  document.getElementById('paisTable').innerHTML = rows.map(r =>
+    `<tr><td>${r.flag} ${r.name}</td><td class="num">${fmt(r.leads)}</td><td class="num">${r.cpl}</td><td class="num">${r.inv}</td><td><span class="pill">${r.sql}</span></td></tr>`
+  ).join('');
+}
+
+function renderKeywords(rows) {
+  const toneColor = { good:'var(--accent)', mid:'var(--text)', bad:'var(--accent3)' };
+  document.getElementById('kwTable').innerHTML = rows.map(r =>
+    `<tr>
+      <td style="color:var(--text);font-weight:500">${r.kw}</td>
+      <td class="num">${r.clicks}</td><td class="num">${r.ctr}</td><td class="num">${r.cpc}</td>
+      <td class="num">${r.leads}</td>
+      <td class="num" style="color:${toneColor[r.tone]}">${r.cpl}</td>
+    </tr>`
+  ).join('');
+}
+
+function renderAll(platform) {
+  const d = MOCK[platform];
+  renderKPIs(d);
+  renderFunnel(d.funnel);
+  renderLeadsChart(d.leadsData);
+  renderCampaigns(d.campaigns);
+  renderPaises(d.paises);
+  renderKeywords(d.keywords);
+}
+
+document.querySelectorAll('.platform-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.platform-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentPlatform = btn.dataset.p;
+    renderAll(currentPlatform);
+    document.querySelector('.keywords-card').style.display = currentPlatform === 'meta' ? 'none' : 'block';
+  });
+});
+
+renderAll('all');
+</script>
+</body>
+</html>
